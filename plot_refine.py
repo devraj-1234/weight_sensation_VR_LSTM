@@ -98,6 +98,6 @@ def refine_and_plot_csv(target_csv):
 if __name__ == "__main__":
     # Replace this with the actual name of your file in the Data folder!
     # Tip: Use your 0kg bicep curl file to see it fix the tracking spikes.
-    file_to_refine = "Data/Waste CSV 5th March/Telemetry_3kg_Grab2_230107.csv" 
+    file_to_refine = "Data/curls 6th March/Telemetry_3kg_Grab1_220355.csv"  
     
     refine_and_plot_csv(file_to_refine)

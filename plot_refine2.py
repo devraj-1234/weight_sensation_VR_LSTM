@@ -92,5 +92,5 @@ def refine_vr_kinematics(csv_path):
 
 # ==========================================
 if __name__ == "__main__":
-    target_file = "Data/Waste CSV 5th March/Telemetry_3kg_Grab1_230043.csv"  
+    target_file = "Data/curls 6th March/Telemetry_3kg_Grab1_220355.csv"  
     refine_vr_kinematics(target_file)
