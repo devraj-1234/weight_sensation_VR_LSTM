@@ -27,7 +27,7 @@ def apply_vr_filters(data_array, fs, cutoff=5.0, median_window=5):
     # clean_data = savgol_filter(med_filtered, window_length=window, polyorder=poly)
     return clean_data
 
-def refine_and_plot_csv(target_csv):
+def refine_and_plot_csv(target_csv, weight_label):
     if not os.path.exists(target_csv):
         print(f"Error: Could not find {target_csv}")
         return
@@ -72,7 +72,7 @@ def refine_and_plot_csv(target_csv):
     titles = ['Vertical Position (m)', 'Vertical Velocity (m/s)', 'Vertical Acceleration (m/s²)', 'Mechanical Power']
 
     fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12), sharex=True)
-    fig.suptitle('Raw vs. Refined VR Kinematics', fontsize=16, fontweight='bold')
+    fig.suptitle('Raw vs. Refined VR Kinematics ' + str(weight_label) + ' kg', fontsize=16, fontweight='bold')
 
     for i, col in enumerate(plot_cols):
         # Plot Raw (Red, slightly transparent)
@@ -98,6 +98,6 @@ def refine_and_plot_csv(target_csv):
 if __name__ == "__main__":
     # Replace this with the actual name of your file in the Data folder!
     # Tip: Use your 0kg bicep curl file to see it fix the tracking spikes.
-    file_to_refine = "Data/curls 6th March/Telemetry_3kg_Grab1_220355.csv"  
+    file_to_refine = "Data/curls 6th March/Telemetry_.6kg_Grab1_215222.csv"  
     
-    refine_and_plot_csv(file_to_refine)
+    refine_and_plot_csv(file_to_refine, 0.6)
