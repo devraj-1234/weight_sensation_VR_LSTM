@@ -1,86 +1,91 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-def plot_weight_comparison(csv_files, labels):
-    """
-    Loads multiple VR telemetry CSVs and plots their vertical kinematics 
-    and power side-by-side for comparison.
-    """
-    print("Loading data and generating plots...")
+def refine_and_plot_csv(target_csv, weight_label):
+    if not os.path.exists(target_csv):
+        print(f"Error: Could not find {target_csv}")
+        return
+
+    print(f"Loading {target_csv}...")
+    df = pd.read_csv(target_csv)
+    df_clean = df.copy()
     
-    # Create a large figure with 4 stacked subplots
-    fig, axs = plt.subplots(4, 1, figsize=(10, 14), sharex=True)
-    fig.suptitle('Biomechanical Lift Comparison: Empty Hand vs Heavy Weight', fontsize=16, fontweight='bold')
-
-    # Loop through each file and plot its data
-    for file_path, label in zip(csv_files, labels):
-        if not os.path.exists(file_path):
-            print(f"Warning: Could not find {file_path}. Skipping...")
-            continue
-            
-        # Load the CSV
-        df = pd.read_csv(file_path)
-        
-        # Normalize time so every plot starts exactly at T=0.0 seconds
-        t = df['timestamp'] - df['timestamp'].iloc[0]
-
-        # Plot 1: Vertical Position (The shape of the lift)
-        axs[0].plot(t, df['pos_y'], label=f'{label} kg', linewidth=2)
-        
-        # Plot 2: Vertical Velocity (The speed of the lift)
-        axs[1].plot(t, df['vel_y'], label=f'{label} kg', linewidth=2)
-        
-        # Plot 3: Vertical Acceleration (The force applied)
-        axs[2].plot(t, df['acc_y'], label=f'{label} kg', linewidth=2)
-        
-        # Plot 4: Mechanical Power Proxy (The energy burned)
-        axs[3].plot(t, df['power'], label=f'{label} kg', linewidth=2)
-
-    # --- Formatting the Subplots ---
+    filtered_csv = target_csv.replace('.csv', '_CLEANED_MEDIAN.csv')
+    if not os.path.exists(filtered_csv):
+        print(f"Error: Could not find the cleaned CSV file: {filtered_csv}")
+        return
+    print(f"Loading cleaned data from {filtered_csv}...")
+    df_median = pd.read_csv(filtered_csv)
     
-    # Position
-    axs[0].set_ylabel('Position Y (meters)')
-    axs[0].set_title('Trajectory (Height over time)')
-    axs[0].grid(True, linestyle='--', alpha=0.7)
-    axs[0].legend()
+    
+    # Normalize time to start at 0.0
+    df['timestamp'] = df['timestamp'] - df['timestamp'].iloc[0]
+    
+    # --- DYNAMIC SAMPLING FREQUENCY ---
+    # Calculate average time delta between frames to find exact Hz
+    dt = np.mean(np.diff(df['timestamp']))
+    fs = 1.0 / dt
+    print(f"Detected exact sampling frequency: {fs:.2f} Hz")
 
-    # Velocity
-    axs[1].set_ylabel('Velocity Y (m/s)')
-    axs[1].set_title('Speed Profile')
-    axs[1].grid(True, linestyle='--', alpha=0.7)
-    axs[1].legend()
+    # --- COLUMNS TO FILTER ---
+    # We filter position, velocity, acceleration, angular velocity, and power.
+    # We DO NOT filter Quaternions (rot_x, rot_y, rot_z, rot_w) to preserve valid 3D rotations.
+    columns_to_process = [
+        'pos_x', 'pos_y', 'pos_z', 
+        'vel_x', 'vel_y', 'vel_z', 
+        'acc_x', 'acc_y', 'acc_z', 
+        'ang_vel_x', 'ang_vel_y', 'ang_vel_z', 
+        'power'
+    ]
+    
+    # --- PLOT THE RESULTS ---
+    # We will plot the Y-axis (Vertical) to visualize the heaviest part of the lift
+    plot_cols = ['pos_y', 'vel_y', 'acc_y', 'power']
+    titles = ['Vertical Position (m)', 'Vertical Velocity (m/s)', 'Vertical Acceleration (m/s²)', 'Mechanical Power']
 
-    # Acceleration
-    axs[2].set_ylabel('Acceleration Y (m/s²)')
-    axs[2].set_title('Force / Acceleration')
-    axs[2].grid(True, linestyle='--', alpha=0.7)
-    axs[2].legend()
+    fig, axes = plt.subplots(nrows=4, ncols=1, figsize=(10, 12), sharex=True)
+    fig.suptitle('Raw vs. Refined VR Kinematics ' + str(weight_label) + ' kg', fontsize=16, fontweight='bold')
 
-    # Power
-    axs[3].set_ylabel('Power Proxy')
-    axs[3].set_title('Calculated Mechanical Effort')
-    axs[3].set_xlabel('Time (Seconds)')
-    axs[3].grid(True, linestyle='--', alpha=0.7)
-    axs[3].legend()
+  
+    for i, col in enumerate(plot_cols):
+        # RAW
+        axes[i].plot(
+            df['timestamp'],
+            df_clean[col],
+            color='red',
+            alpha=0.5,
+            label='Raw',
+            linewidth=1.2
+        )
 
-    # Clean up layout and display
+        # MEDIAN
+        axes[i].plot(
+            df['timestamp'],
+            df_median[col],
+            color='blue',
+            label='Median Filter',
+            linewidth=2
+        )
+
+        axes[i].set_ylabel(titles[i])
+        axes[i].legend(loc='upper right')
+        axes[i].grid(True, linestyle='--', alpha=0.7)
+
+    axes[-1].set_xlabel('Time (Seconds)')
     plt.tight_layout(rect=[0, 0.03, 1, 0.96])
+    
+    
+    
     plt.show()
 
 # ==========================================
-# RUNNING THE SCRIPT
+# EXECUTION
 # ==========================================
 if __name__ == "__main__":
-    # Update these paths to match the actual file names generated by your Unity script!
-    file_list = [
-        # "Data/Telemetry_0kg_Grab1_010222.csv"  # Empty hand (0 kg)
-        # "Data/Telemetry_2kg_Grab2_225728.csv"  # 2 kg
-        # "Data/Telemetry_3kg_Grab2_230107.csv"   # 3 kg
-        "Data/0kg curls 5th March/Telemetry_0kg_Grab1_001536.csv"  # Empty hand (0 kg)
-    ]
+    # Replace this with the actual name of your file in the Data folder!
+    # Tip: Use your 0kg bicep curl file to see it fix the tracking spikes.
+    file_to_refine = "Data/curls 6th March/Telemetry_4kg_Grab1_230219.csv"  
     
-    # The labels that will appear in the legend
-    weight_labels = ["0.0"]
-    
-    plot_weight_comparison(file_list, weight_labels)
+    refine_and_plot_csv(file_to_refine, 4)

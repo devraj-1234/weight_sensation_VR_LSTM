@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import medfilt, butter, filtfilt, savgol_filter
 import os
 
-def apply_vr_filters(data_array, fs, cutoff=5.0, median_window=5, sg_window=7, sg_poly=2):
+def apply_vr_filters(data_array, fs, cutoff=5.0, median_window=5, sg_window=2, sg_poly=0):
     """
     Applies the Two-Stage Biomechanical Filter.
     """
@@ -58,11 +58,7 @@ def refine_and_plot_csv(target_csv, weight_label):
     # We filter position, velocity, acceleration, angular velocity, and power.
     # We DO NOT filter Quaternions (rot_x, rot_y, rot_z, rot_w) to preserve valid 3D rotations.
     columns_to_process = [
-        'pos_x', 'pos_y', 'pos_z', 
-        'vel_x', 'vel_y', 'vel_z', 
-        'acc_x', 'acc_y', 'acc_z', 
-        'ang_vel_x', 'ang_vel_y', 'ang_vel_z', 
-        'power'
+        'pos_x', 'pos_y', 'pos_z'
     ]
 
     print("Applying Median and Median+Savgol filters...")
@@ -70,11 +66,28 @@ def refine_and_plot_csv(target_csv, weight_label):
         med, sav = apply_vr_filters(df[col].values, fs)
         df_median[col] = med
         df_savgol[col] = sav
+        
+    for axis in ['x', 'y', 'z']:
+        
+         # RAW derivatives
+        df['vel_' + axis] = np.gradient(df['pos_' + axis], dt)
+        df['acc_' + axis] = np.gradient(df['vel_' + axis], dt)
+
+        # MEDIAN derivatives
+        df_median['vel_' + axis] = np.gradient(df_median['pos_' + axis], dt)
+        df_median['acc_' + axis] = np.gradient(df_median['vel_' + axis], dt)
+
+        # MEDIAN + SAVGOL derivatives
+        df_savgol['vel_' + axis] = np.gradient(df_savgol['pos_' + axis], dt)
+        df_savgol['acc_' + axis] = np.gradient(df_savgol['vel_' + axis], dt)
+        
+    for dataset in [df, df_median, df_savgol]:
+        dataset['power'] = dataset['vel_y'] * (dataset['acc_y'] + 9.81)
 
     # --- SAVE THE CLEANED DATA ---
-    cleaned_filename = target_csv.replace('.csv', '_CLEANED_MEDIAN.csv')
-    df_median.to_csv(cleaned_filename, index=False)
-    print(f"Success! Cleaned data saved to: {cleaned_filename}")
+    # cleaned_filename = target_csv.replace('.csv', '_CLEANED_SAVGOL.csv')
+    # df_clean.to_csv(cleaned_filename, index=False)
+    # print(f"Success! Cleaned data saved to: {cleaned_filename}")
 
     # --- PLOT THE RESULTS ---
     # We will plot the Y-axis (Vertical) to visualize the heaviest part of the lift
@@ -131,6 +144,6 @@ def refine_and_plot_csv(target_csv, weight_label):
 if __name__ == "__main__":
     # Replace this with the actual name of your file in the Data folder!
     # Tip: Use your 0kg bicep curl file to see it fix the tracking spikes.
-    file_to_refine = "Data/0kg curls 5th March/Telemetry_0kg_Grab1_001536.csv"  
+    file_to_refine = "Data/curls 6th March/Telemetry_2kg_Grab1_215639.csv"  
     
-    refine_and_plot_csv(file_to_refine, 0)
+    refine_and_plot_csv(file_to_refine, 2)
