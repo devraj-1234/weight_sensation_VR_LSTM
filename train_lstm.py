@@ -11,10 +11,11 @@ import matplotlib.pyplot as plt
 # ==========================================
 # 1. HYPERPARAMETERS & CONFIGURATION
 # ==========================================
-DATA_DIR = "Data"              # Folder containing your _CLEANED.csv files
+# Point this to your new consolidated folder!
+DATA_DIR = "Data/Cleaned_Data" 
 SEQ_LENGTH = 30                # 30 frames of history (~0.33 seconds at 90Hz)
 BATCH_SIZE = 64
-EPOCHS = 50
+EPOCHS = 30
 LEARNING_RATE = 0.001
 
 # We use 18 features: 17 kinematic + 1 weight label
@@ -36,15 +37,20 @@ class VRPseudoHapticDataset(Dataset):
         self.X = []
         self.Y = []
         
-        # Look for all cleaned CSVs
-        file_paths = glob.glob(os.path.join(data_dir, "*_CLEANED.csv"))
+        # Look DIRECTLY inside the specific consolidated folder
+        search_pattern = os.path.join(data_dir, "*_CLEANED_MEDIAN.csv")
+        file_paths = glob.glob(search_pattern)
+        
         if not file_paths:
-            raise ValueError("No cleaned CSV files found. Check your directory!")
+            raise ValueError(f"No cleaned CSV files found in '{data_dir}'! Did you copy them over?")
+
+        print(f"\nFound {len(file_paths)} CLEANED files in '{data_dir}'. Compiling datasets...")
+        for f in file_paths:
+            print(f" -> Loading: {os.path.basename(f)}")
 
         all_features = []
         all_targets = []
         
-        print("Loading and compiling datasets...")
         for file in file_paths:
             df = pd.read_csv(file)
             
@@ -95,7 +101,7 @@ class VRPseudoHapticDataset(Dataset):
 
         self.X = torch.tensor(np.array(self.X), dtype=torch.float32)
         self.Y = torch.tensor(np.array(self.Y), dtype=torch.float32)
-        print(f"Total Sequence Windows Generated: {len(self.X)}")
+        print(f"\nTotal Sequence Windows Generated: {len(self.X)}")
 
     def __len__(self):
         return len(self.X)
