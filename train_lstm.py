@@ -12,10 +12,10 @@ from tqdm import tqdm  # <-- New import
 # ==========================================
 # 1. HYPERPARAMETERS & CONFIGURATION
 # ==========================================
-DATA_DIR = "Cleaned_Data"      # Ensure this matches your folder name exactly!
+DATA_DIR = "Data/Cleaned_Data"      # Ensure this matches your folder name exactly!
 SEQ_LENGTH = 30                # 30 frames of history (~0.33 seconds at 90Hz)
 BATCH_SIZE = 64
-EPOCHS = 30
+EPOCHS = 50
 LEARNING_RATE = 0.001
 
 # We use 18 features: 17 kinematic + 1 weight label
