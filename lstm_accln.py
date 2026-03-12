@@ -23,7 +23,7 @@ LEARNING_RATE = 0.001
 INPUT_SIZE = 18
 HIDDEN_SIZE = 64
 NUM_LAYERS = 2
-OUTPUT_SIZE = 3
+OUTPUT_SIZE = 3   # Predicting acceleration (ax, ay, az)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print("Training on:", device)
@@ -56,7 +56,8 @@ class VRPseudoHapticDataset(Dataset):
                            'ang_vel_x','ang_vel_y','ang_vel_z',
                            'power','weight_label']].values
 
-            targets = df[['vel_x','vel_y','vel_z']].values
+            # TARGET = ACCELERATION
+            targets = df[['acc_x','acc_y','acc_z']].values
 
             all_features.append(features)
             all_targets.append(targets)
@@ -87,7 +88,7 @@ class VRPseudoHapticDataset(Dataset):
 
                 window_x = scaled_clip[j:j+seq_length]
 
-                # make positions relative
+                # Make positions relative
                 window_x[:,0:3] = window_x[:,0:3] - window_x[0,0:3]
 
                 window_y = target_clip[j+seq_length]
@@ -105,7 +106,6 @@ class VRPseudoHapticDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
-
 
 # ==========================================
 # 3. MODEL
@@ -139,15 +139,9 @@ class PseudoHapticLSTM(nn.Module):
 
         out = out[:, -1, :]
 
-        delta_v = self.fc(out)
+        acceleration = self.fc(out)
 
-        # residual velocity prediction
-        last_velocity = x[:, -1, 7:10]
-
-        predicted_velocity = last_velocity + delta_v
-
-        return predicted_velocity
-
+        return acceleration
 
 # ==========================================
 # 4. TRAINING
@@ -212,10 +206,7 @@ def train_model():
             running_loss += loss.item() * batch_x.size(0)
 
         epoch_train_loss = running_loss / len(train_loader.dataset)
-
         train_losses.append(epoch_train_loss)
-
-        # validation
 
         model.eval()
 
@@ -235,26 +226,18 @@ def train_model():
                 running_val_loss += val_loss.item() * batch_x.size(0)
 
         epoch_val_loss = running_val_loss / len(val_loader.dataset)
-
         val_losses.append(epoch_val_loss)
 
-        print(f"Epoch [{epoch+1}/{EPOCHS}]  Train: {epoch_train_loss:.6f}  Val: {epoch_val_loss:.6f}")
+        print(f"Epoch [{epoch+1}/{EPOCHS}] Train: {epoch_train_loss:.6f} Val: {epoch_val_loss:.6f}")
 
-        # save best model
         if epoch_val_loss < best_val_loss:
-
             best_val_loss = epoch_val_loss
-
             torch.save(model.state_dict(), "best_vr_haptic_lstm.pth")
 
     print("\nBest validation loss:", best_val_loss)
 
-    # save scaler
     joblib.dump(scaler, "feature_scaler.pkl")
-
     print("Scaler saved")
-
-    # plot learning curve
 
     plt.plot(train_losses,label="Train Loss")
     plt.plot(val_losses,label="Val Loss")
@@ -265,11 +248,8 @@ def train_model():
 
     plt.legend()
     plt.grid()
-
     plt.show()
 
-
-# ==========================================
 
 if __name__ == "__main__":
     train_model()

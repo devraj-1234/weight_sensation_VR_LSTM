@@ -1,3 +1,2 @@
-venv
-Data/Cleaned_Data
+.venv
 test.py
